@@ -21,3 +21,4 @@ export const checkConnection = async () => {
         console.error('Database connection failed:', error);
     }
 }
+
