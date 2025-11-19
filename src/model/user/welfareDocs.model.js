@@ -21,7 +21,7 @@ export const createWelfareDocsTable = async () => {
   console.log("✅ welfareDocs table created");
 };
 
-export const insertWelfareDocs = async (docs) => {
+export const insertWelfareDocsIntoDB = async (docs) => {
   // Destructure with default values of null for optional fields
   const {
     id,
