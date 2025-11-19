@@ -26,15 +26,14 @@ export const uploadWelfareDocs = async (req, res) => {
             return res.status(400).json({ message: 'userId and formId are required' });
         }
 
-        const documentFields = ['discharge_certificate', 'doctor_prescription', 'medicine_bills', 'diagnostic_reports', 'otherDoc1', 'otherDoc2', 'otherDoc3', 'otherDoc4', 'otherDoc5'];
+        let uploadedDocsPath = { 'discharge_certificate': "", 'doctor_prescription': "", 'medicine_bills': "", 'diagnostic_reports': "", 'otherDoc1': "", 'otherDoc2': "", 'otherDoc3': "", 'otherDoc4': "", 'otherDoc5': "" };
 
         const folderPath = `welfare-docs/${userId}/${formId}`;
-        let uploadedDocsPath = [];
+
 
         for (const element in docs) {
             const file = element.file;
             const name = element.name;
-            const uniqueId = uuidv4();
 
             try {
                 // Upload to Cloudinary with dynamic path
@@ -52,19 +51,18 @@ export const uploadWelfareDocs = async (req, res) => {
                     ).end(file.buffer);
                 });
 
-                uploadedDocsPath.push(result.secure_url);
+                uploadedDocsPath[name] = result.secure_url;
             } catch (uploadError) {
-                console.error(`Error uploading ${field}:`, uploadError);
-                uploadedDocs[field] = null;
+                console.error(`Error uploading ${file}:`, uploadError);
+                uploadedDocsPath[field] = null;
             }
         }
 
         // Insert into database
-        await insertWelfareDocsIntoDB(docsData);
+        await insertWelfareDocsIntoDB(uploadedDocsPath, userId);
 
         res.status(200).json({
-            message: 'Welfare documents uploaded successfully',
-            uploadedDocs: uploadedDocs
+            message: 'Welfare documents uploaded successfully'
         });
     } catch (error) {
         console.error('Error uploading welfare documents:', error);
@@ -83,9 +81,9 @@ export const fetchWelfareDocs = async (req, res) => {
     }
 };
 
-export const uploadWelfareDocsOnCloud = async (req, res) => {
+export const uploadWelfareDocsOnCloud = async (req, res, next) => {
     try {
-        const { userId, formId } = req.body;
+        const { userId, formId, files } = req.body;
 
         if (!userId || !formId) {
             return res.status(400).json({ message: 'userId and formId are required' });

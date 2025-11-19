@@ -4,8 +4,8 @@ import { uploadWelfareDocs, fetchWelfareDocs, uploadWelfareDocsOnCloud, uploadMi
 const router = express.Router();
 
 router.post("/submit-welfare-form", submitWelfareForm);
-router.post("/upload-welfare-docs", uploadMiddleware, uploadWelfareDocs);
-router.post("/upload-welfare-docs-cloud", uploadMiddleware, uploadWelfareDocsOnCloud);
+// router.post("/upload-welfare-docs", uploadMiddleware, );
+router.post("/upload-welfare-docs", uploadWelfareDocs);
 router.get("/fetch-welfare-docs/:id", fetchWelfareDocs);
 
 export default router;
