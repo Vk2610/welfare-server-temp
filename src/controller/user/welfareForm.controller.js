@@ -1,4 +1,4 @@
-import { getAllFormsOfUser, insertWelfareFormData, updateApprAmt, updateStatus } from '../../model/user/welfareForm.model.js';
+import { getAllForms, getAllFormsOfUser, insertWelfareFormData, updateApprAmt, updateStatus } from '../../model/user/welfareForm.model.js';
 
 export const submitWelfareForm = async (req, res) => {
     try {
@@ -33,6 +33,17 @@ export const updateFormApprovalAmt = async (req, res) => {
     }
 }
 
+export const getForms = async (req, res) => {
+    try {
+        const { page = 1, limit = 10, search = '' } = req.query;
+        const forms = await getAllForms({ page, limit, search });
+        return res.status(200).json({ message: 'Forms Retrieved Successfully', forms: forms })
+    } catch (error) {
+        console.error('Error retrieving forms: ', error);
+        return res.status().json({ message: 'Failed to retrieve forms' });
+    }
+}
+
 export const getFormsOfUser = async (req, res) => {
     try {
         const { user_id } = req.body;
@@ -45,12 +56,12 @@ export const getFormsOfUser = async (req, res) => {
 }
 
 export const getUsersController = async (req, res) => {
-  try {
-    const { page = 1, limit = 10, search = '' } = req.query;
-    const result = await getUsers({ page, limit, search });
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error('Error fetching users:', error);
-    return res.status(500).json({ message: 'Failed to fetch users' });
-  }
+    try {
+        const { page = 1, limit = 10, search = '' } = req.query;
+        const result = await getUsers({ page, limit, search });
+        return res.status(200).json({ message: 'Users fetched successfully', users: result });
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        return res.status(500).json({ message: 'Failed to fetch users' });
+    }
 }

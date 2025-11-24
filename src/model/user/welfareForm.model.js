@@ -1,8 +1,9 @@
 import { pool } from '../../config/db.config.js';
+import { v4 as uuidv4 } from 'uuid';
 
 // Create WF_User Table
 const createWF_UserTable = async () => {
-    const query = `
+  const query = `
     CREATE TABLE IF NOT EXISTS WF_Users (
       user_id VARCHAR(255) PRIMARY KEY,
       hrmsNo varchar(255),
@@ -12,13 +13,13 @@ const createWF_UserTable = async () => {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `;
-    await pool.execute(query);
-    console.log("✅ WF_User table created");
+  await pool.execute(query);
+  console.log("✅ WF_User table created");
 };
 
 // Create Patient Table
 const createPatientTable = async () => {
-    const query = `
+  const query = `
     CREATE TABLE IF NOT EXISTS Patient (
       user_id VARCHAR(255),
       patient_id VARCHAR(255) PRIMARY KEY,
@@ -31,13 +32,13 @@ const createPatientTable = async () => {
       FOREIGN KEY (user_id) REFERENCES WF_Users(user_id)
     );
   `;
-    await pool.execute(query);
-    console.log("✅ Patient table created");
+  await pool.execute(query);
+  console.log("✅ Patient table created");
 };
 
 // Create MedicalExpenses Table
 const medicalExpensesTable = async () => {
-    const query = `
+  const query = `
     CREATE TABLE IF NOT EXISTS Medical_Expenses (
       id VARCHAR(255) PRIMARY KEY, 
       patient_id VARCHAR(255) NOT NULL,
@@ -50,13 +51,13 @@ const medicalExpensesTable = async () => {
       FOREIGN KEY (patient_id) REFERENCES Patient(patient_id)
     );
   `;
-    await pool.execute(query);
-    console.log("✅ MedicalExpenses table created");
+  await pool.execute(query);
+  console.log("✅ MedicalExpenses table created");
 };
 
 // Create FundRequest Table
 const fundRequestTable = async () => {
-    const query = `
+  const query = `
     CREATE TABLE IF NOT EXISTS Fund_Request (
       id VARCHAR(255),
       user_id VARCHAR(255) NOT NULL,
@@ -69,13 +70,13 @@ const fundRequestTable = async () => {
       FOREIGN KEY (user_id) REFERENCES WF_Users(user_id)
     );
   `;
-    await pool.execute(query);
-    console.log("✅ FundRequest table created");
+  await pool.execute(query);
+  console.log("✅ FundRequest table created");
 };
 
 // Create PreviousFund Table
 const previousFundTable = async () => {
-    const query = `
+  const query = `
     CREATE TABLE IF NOT EXISTS Previous_Fund (
       id VARCHAR(255),
       user_id VARCHAR(255) NOT NULL,
@@ -87,32 +88,32 @@ const previousFundTable = async () => {
       FOREIGN KEY (user_id) REFERENCES WF_Users(user_id)
     );
   `;
-    await pool.execute(query);
-    console.log("✅ PreviousFund table created");
+  await pool.execute(query);
+  console.log("✅ PreviousFund table created");
 };
 
 // Run all table creations
 export const createAllTables = async () => {
-    try {
-        await createWF_UserTable();
-        await createPatientTable();
-        await medicalExpensesTable();
-        await fundRequestTable();
-        await previousFundTable();
-        console.log("🎉 All tables created successfully!");
-    } catch (error) {
-        console.error("❌ Error creating tables:", error);
-    }
+  try {
+    await createWF_UserTable();
+    await createPatientTable();
+    await medicalExpensesTable();
+    await fundRequestTable();
+    await previousFundTable();
+    console.log("🎉 All tables created successfully!");
+  } catch (error) {
+    console.error("❌ Error creating tables:", error);
+  }
 };
 
 
 
 export {
-    createWF_UserTable,
-    createPatientTable,
-    medicalExpensesTable,
-    fundRequestTable,
-    previousFundTable
+  createWF_UserTable,
+  createPatientTable,
+  medicalExpensesTable,
+  fundRequestTable,
+  previousFundTable
 };
 
 // ---------------------------------------------------------
@@ -216,7 +217,20 @@ export const insertWelfareFormData = async (req, res) => {
   const connection = await pool.getConnection();
 
   try {
+
     await connection.beginTransaction();
+
+    const user_id = uuidv4();
+    const patient_id = uuidv4();
+    const expenses_id = uuidv4();
+    const fund_request_id = uuidv4();
+    const prev_fund_id = uuidv4();
+
+    formData.user_id = user_id;
+    formData.patient_id = patient_id;
+    formData.expenses_id = expenses_id;
+    formData.fund_request_id = fund_request_id;
+    formData.prev_fund_id = prev_fund_id;
 
     // await insertUser(connection, formData);
     await insertPatient(connection, formData);
@@ -282,6 +296,60 @@ export const updateApprAmt = async (id, amt) => {
     await connection.execute(query, values);
   } catch (error) {
     console.error("Error occured while updating status: ", error);
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export const getAllForms = async ({ page = 1, limit = 10 } = {}) => {
+  const connection = await pool.getConnection();
+  const pg = Math.max(parseInt(page, 10) || 1, 1);
+  const lim = Math.max(parseInt(limit, 10) || 10, 1);
+  const offset = (pg - 1) * lim;
+
+  try {
+    // Count total pending forms
+    const countQuery = `
+      SELECT COUNT(*) AS total
+      FROM Fund_Request fr
+      WHERE fr.form_status = 'Pending'
+    `;
+    const [countRows] = await connection.execute(countQuery);
+    const total = countRows[0]?.total ?? 0;
+
+    // Fetch pending forms with pagination and include patient info
+    const dataQuery = `
+      SELECT
+        fr.id AS fund_req_id,
+        fr.user_id,
+        fr.req_fund_date,
+        fr.req_fund_amt,
+        fr.app_fund_amt,
+        fr.form_status,
+        fr.is_fund_submitted,
+        fr.created_at,
+        p.patient_id,
+        p.patient_name,
+        p.relationship_with_user,
+        p.type_of_disease
+      FROM Fund_Request fr
+      LEFT JOIN Patient p ON fr.user_id = p.user_id
+      WHERE fr.form_status = 'Pending'
+      ORDER BY fr.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const [rows] = await connection.execute(dataQuery, [lim, offset]);
+
+    return {
+      total,
+      page: pg,
+      limit: lim,
+      forms: rows
+    };
+  } catch (error) {
+    console.error('Error retrieving forms: ', error);
     throw error;
   } finally {
     connection.release();
@@ -379,7 +447,7 @@ export const updateHRMSNo = async (mobileNo, hrmsNo) => {
       WHERE mobileNo = ?
     `;
 
-    const values = [ hrmsNo, mobileNo ];
+    const values = [hrmsNo, mobileNo];
     (await connection).execute(query, values);
   } catch (error) {
     console.error('Error updating user hrmsno: ', error);
@@ -388,3 +456,5 @@ export const updateHRMSNo = async (mobileNo, hrmsNo) => {
     connection.release();
   }
 }
+
+
