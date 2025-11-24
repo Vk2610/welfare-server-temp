@@ -1,4 +1,4 @@
-import { insertWelfareFormData } from '../../model/user/welfareForm.model.js';
+import { getAllFormsOfUser, insertWelfareFormData, updateApprAmt, updateStatus } from '../../model/user/welfareForm.model.js';
 
 export const submitWelfareForm = async (req, res) => {
     try {
@@ -11,4 +11,46 @@ export const submitWelfareForm = async (req, res) => {
     }
 };
 
-        
+export const updateFormStatus = async (req, res) => {
+    try {
+        const { id, status } = req.body;
+        await updateStatus(id, status);
+        return res.status(200).json({ message: 'Form Status updated successfully' });
+    } catch (error) {
+        console.error('Error updating form: ', error);
+        return res.status(500).json({ message: 'Failed to update form status' });
+    }
+}
+
+export const updateFormApprovalAmt = async (req, res) => {
+    try {
+        const { id, amt } = req.body;
+        await updateApprAmt(id, amt);
+        return res.status(200).json({ message: 'Form approval amount updated successfully' });
+    } catch (error) {
+        console.error('Error updating form approval amount: ', error);
+        return res.status(500).json({ message: 'Failed to update form approval amount' });
+    }
+}
+
+export const getFormsOfUser = async (req, res) => {
+    try {
+        const { user_id } = req.body;
+        const forms = await getAllFormsOfUser(user_id);
+        return res.status(200).json({ message: 'Forms Retrieved Successfully', forms: forms })
+    } catch (error) {
+        console.error('Error retrieving forms: ', error);
+        return res.status().json({ message: 'Failed to retrieve forms' });
+    }
+}
+
+export const getUsersController = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search = '' } = req.query;
+    const result = await getUsers({ page, limit, search });
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return res.status(500).json({ message: 'Failed to fetch users' });
+  }
+}

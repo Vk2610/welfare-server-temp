@@ -5,6 +5,7 @@ const createWF_UserTable = async () => {
     const query = `
     CREATE TABLE IF NOT EXISTS WF_Users (
       user_id VARCHAR(255) PRIMARY KEY,
+      hrmsNo varchar(255),
       name VARCHAR(100) NOT NULL,
       email VARCHAR(150),
       salary_per_month DECIMAL(10,2),
@@ -61,7 +62,8 @@ const fundRequestTable = async () => {
       user_id VARCHAR(255) NOT NULL,
       req_fund_date DATE,
       req_fund_amt DECIMAL(10,2),
-      form_status ENUM('Pending','Approved','Rejected','Processing') DEFAULT 'Pending',
+      app_fund_amt DECIMAL(10, 2) DEFAULT 0,
+      form_status ENUM('Pending','Approved','Rejected') DEFAULT 'Pending',
       is_fund_submitted ENUM('Yes','No') DEFAULT 'No',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES WF_Users(user_id)
@@ -118,11 +120,12 @@ export {
 // ---------------------------------------------------------
 const insertUser = async (connection, formData) => {
   const query = `
-    INSERT INTO WF_Users (user_id, name, email, salary_per_month)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO WF_Users (user_id, hrmsNo, name, email, salary_per_month)
+    VALUES (?, ?, ?, ?, ?)
   `;
   const values = [
     formData.user_id,
+    formData.hrmsNo,
     formData.name,
     formData.email,
     formData.salary_per_month
@@ -215,7 +218,7 @@ export const insertWelfareFormData = async (req, res) => {
   try {
     await connection.beginTransaction();
 
-    await insertUser(connection, formData);
+    // await insertUser(connection, formData);
     await insertPatient(connection, formData);
     await insertMedicalExpenses(connection, formData);
     await insertFundRequest(connection, formData);
@@ -243,4 +246,145 @@ export const insertWelfareFormData = async (req, res) => {
   }
 };
 
-// get welfare form data by user_id
+export const updateStatus = async (id, status) => {
+
+  const connection = await pool.getConnection();
+
+  try {
+
+    const query = `
+      UPDATE INTO Fund_Request SET form_status = ? WHERE id = ?
+    `;
+
+    const values = [status, id];
+
+    await connection.execute(query, values);
+  } catch (error) {
+    console.error("Error occured while updating status: ", error);
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export const updateApprAmt = async (id, amt) => {
+
+  const connection = await pool.getConnection();
+
+  try {
+
+    const query = `
+      UPDATE INTO Fund_Request SET app_fund_amt = ? WHERE id = ?
+    `;
+
+    const values = [amt, id];
+
+    await connection.execute(query, values);
+  } catch (error) {
+    console.error("Error occured while updating status: ", error);
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export const getAllFormsOfUser = async (user_id) => {
+
+  const connection = await pool.getConnection();
+
+  try {
+    const query = `
+      SELECT 
+        fr.id AS fund_req_id,
+        fr.user_id,
+        fr.req_fund_date,
+        fr.req_fund_amt,
+        fr.app_fund_amt,
+        fr.form_status,
+        fr.is_fund_submitted,
+        fr.created_at,
+        p.patient_id,
+        p.patient_name,
+        p.relationship_with_user,
+        p.type_of_disease
+      FROM Fund_Request fr
+      JOIN Patient p ON fr.user_id = p.user_id
+      WHERE fr.user_id = ?
+      ORDER BY fr.created_at DESC
+    `;
+    const [rows] = await connection.execute(query, [user_id]);
+    return rows;
+  } catch (error) {
+    console.error('Error retrieving forms of the user: ', error);
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export const getUsers = async ({ page = 1, limit = 10, search = '' } = {}) => {
+  const connection = await pool.getConnection();
+  const pg = Math.max(parseInt(page, 10) || 1, 1);
+  const lim = Math.max(parseInt(limit, 10) || 10, 1);
+  const offset = (pg - 1) * lim;
+  const searchParam = `%${search.trim()}%`;
+
+  try {
+    const countQuery = `
+      SELECT COUNT(*) AS total
+      FROM user_profile u
+      WHERE u.name LIKE ? OR u.hrmsNo LIKE ?
+    `;
+    const [countRows] = await connection.execute(countQuery, [searchParam, searchParam]);
+    const total = countRows[0]?.total ?? 0;
+
+    const dataQuery = `
+      SELECT 
+        u.user_id,
+        u.hrmsNo,
+        u.name,
+        u.email,
+        u.salary_per_month,
+        u.created_at
+      FROM user_profile u
+      WHERE u.name LIKE ? OR u.hrmsNo LIKE ?
+      ORDER BY u.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+    const [rows] = await connection.execute(dataQuery, [searchParam, searchParam, lim, offset]);
+
+    return {
+      total,
+      page: pg,
+      limit: lim,
+      users: rows
+    };
+  } catch (error) {
+    console.error('Error retrieving paginated users:', error);
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
+
+export const updateHRMSNo = async (mobileNo, hrmsNo) => {
+
+  const connection = pool.getConnection();
+
+  try {
+
+    const query = `
+      UPDATE INTO user_profile
+      SET hrmsNo = ?
+      WHERE mobileNo = ?
+    `;
+
+    const values = [ hrmsNo, mobileNo ];
+    (await connection).execute(query, values);
+  } catch (error) {
+    console.error('Error updating user hrmsno: ', error);
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
