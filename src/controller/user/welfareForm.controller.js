@@ -1,13 +1,11 @@
-import { getAllForms, getAllFormsOfUser, insertWelfareFormData, updateApprAmt, updateStatus } from '../../model/user/welfareForm.model.js';
+import { getAllForms, getAllFormsOfUser, getUsers, insertWelfareFormData, updateApprAmt, updateStatus } from '../../model/user/welfareForm.model.js';
 
 export const submitWelfareForm = async (req, res) => {
     try {
         await insertWelfareFormData(req, res);
-        res.status(200).json({ message: 'Welfare form submitted successfully' });
     }
     catch (error) {
         console.error('Error submitting welfare form:', error);
-        res.status(500).json({ message: 'Failed to submit welfare form' });
     }
 };
 
@@ -35,29 +33,31 @@ export const updateFormApprovalAmt = async (req, res) => {
 
 export const getForms = async (req, res) => {
     try {
-        const { page = 1, limit = 10, search = '' } = req.query;
-        const forms = await getAllForms({ page, limit, search });
+        const { page = 1, limit = 10 } = req.query;
+        console.log(`page : ${page}, limit: ${limit}`);
+        const forms = await getAllForms({page, limit});
         return res.status(200).json({ message: 'Forms Retrieved Successfully', forms: forms })
     } catch (error) {
         console.error('Error retrieving forms: ', error);
-        return res.status().json({ message: 'Failed to retrieve forms' });
+        return res.status(500).json({ message: 'Failed to retrieve forms' });
     }
 }
 
 export const getFormsOfUser = async (req, res) => {
     try {
-        const { user_id } = req.body;
-        const forms = await getAllFormsOfUser(user_id);
+        const { hrmsNo } = req.query;
+        const forms = await getAllFormsOfUser(hrmsNo);
         return res.status(200).json({ message: 'Forms Retrieved Successfully', forms: forms })
     } catch (error) {
         console.error('Error retrieving forms: ', error);
-        return res.status().json({ message: 'Failed to retrieve forms' });
+        return res.status(500).json({ message: 'Failed to retrieve forms' });
     }
 }
 
 export const getUsersController = async (req, res) => {
     try {
         const { page = 1, limit = 10, search = '' } = req.query;
+        console.log(`search = ${search}`);
         const result = await getUsers({ page, limit, search });
         return res.status(200).json({ message: 'Users fetched successfully', users: result });
     } catch (error) {

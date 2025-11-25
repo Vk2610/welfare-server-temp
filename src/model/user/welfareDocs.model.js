@@ -5,7 +5,8 @@ import { v4 as uuidv4 } from 'uuid';
 export const createWelfareDocsTable = async () => {
   const query = `
   CREATE TABLE IF NOT EXISTS welfareDocs (
-    id varchar(255),
+    docs_id varchar(255) PRIMARY KEY,
+    hrmsNo varchar(255) NOT NULL,
     discharge_certificate varchar(255),
     doctor_prescription varchar(255),
     medicine_bills varchar(255),
@@ -15,9 +16,7 @@ export const createWelfareDocsTable = async () => {
     otherDoc3 varchar(255) NULL,
     otherDoc4 varchar(255) NULL,
     otherDoc5 varchar(255) NULL,
-    user_id varchar(255),
-    PRIMARY KEY (id),
-    FOREIGN KEY (user_id) REFERENCES WF_Users(user_id),
+    FOREIGN KEY (hrmsNo) REFERENCES wf_users(hrmsNo),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   );`;
   await pool.execute(query);
@@ -27,7 +26,7 @@ export const createWelfareDocsTable = async () => {
 export const insertWelfareDocsIntoDB = async (docs) => {
   // Destructure with default values of null for optional fields
   const {
-    userId,
+    hrmsNo,
     discharge_certificate,
     doctor_prescription,
     medicine_bills,
@@ -42,13 +41,14 @@ export const insertWelfareDocsIntoDB = async (docs) => {
   const id = uuidv4();
 
   const query = `
-    INSERT INTO welfareDocs (id, discharge_certificate, doctor_prescription, medicine_bills, diagnostic_reports,
-        otherDoc1, otherDoc2, otherDoc3, otherDoc4, otherDoc5, user_id)
+    INSERT INTO welfareDocs (docs_id, hrmsNo, discharge_certificate, doctor_prescription, medicine_bills, diagnostic_reports,
+        otherDoc1, otherDoc2, otherDoc3, otherDoc4, otherDoc5)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const values = [
     id,
+    hrmsNo,
     discharge_certificate,
     doctor_prescription,
     medicine_bills,
@@ -57,8 +57,7 @@ export const insertWelfareDocsIntoDB = async (docs) => {
     otherDoc2,
     otherDoc3,
     otherDoc4,
-    otherDoc5,
-    userId
+    otherDoc5
   ];
 
   try {
@@ -74,7 +73,7 @@ export const insertWelfareDocsIntoDB = async (docs) => {
 // retrieve welfare documents by id
 export const getWelfareDocsById = async (id) => {
   const query = `
-    SELECT * FROM welfareDocs WHERE id = ?
+    SELECT * FROM welfareDocs WHERE docs_id = ?
   `;
 
   try {

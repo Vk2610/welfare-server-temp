@@ -5,7 +5,7 @@ import { createWelfareDocsTable } from './src/model/user/welfareDocs.model.js';
 import userRoute from './src/routes/user/user.route.js';
 import authRoutes from './src/routes/auth/auth.routes.js';
 import userProfileRoutes from './src/routes/user/userProfile.routes.js';
-
+import adminRoutes from './src/routes/admin/admin.routes.js';
 
 const app = express();
 const PORT = 3000;
@@ -17,6 +17,7 @@ app.use(express.json());
 app.use('/auth', authRoutes);
 app.use('/user', userRoute);
 app.use('/profile', userProfileRoutes);
+app.use('/admin', adminRoutes);
 
 app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
 
