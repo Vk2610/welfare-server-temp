@@ -1,5 +1,6 @@
 import { pool } from '../../config/db.config.js';
-import { v4 as uuidv4 } from 'uuid';
+// import { v4 as uuidv4 } from 'uuid';
+import { createWelfareDocsTable, insertWelfareDocsIntoDB } from './welfareDocs.model.js';
 
 // Create WF_User Table
 const createWF_UserTable = async () => {
@@ -105,6 +106,7 @@ export const createAllTables = async () => {
     await medicalExpensesTable();
     await fundRequestTable();
     await previousFundTable();
+    await createWelfareDocsTable();
     console.log("🎉 All tables created successfully!");
   } catch (error) {
     console.error("❌ Error creating tables:", error);
@@ -121,11 +123,24 @@ export {
   previousFundTable
 };
 
+
 // ---------------------------------------------------------
 // 1️⃣ Insert into WF_Users
 // ---------------------------------------------------------
 const insertUser = async (connection, formData) => {
   try {
+
+    const checkUserQuery = `
+      SELECT applicantName FROM wf_users WHERE hrmsNo = ?
+    `;
+
+    const rows = await connection.execute(checkUserQuery, [formData.hrmsNo]);
+
+    if (rows[0].length !== 0) {
+      console.log('wf user already exists');
+      return;
+    }
+
     const query = `
     INSERT INTO wf_users (
       hrmsNo, applicantName, branchName, joiningDate, designation,
@@ -284,16 +299,17 @@ export const insertWelfareFormData = async (req, res) => {
 
     await connection.beginTransaction();
 
-    formData.patientId = uuidv4();
-    formData.expensesId = uuidv4();
-    formData.requestId = uuidv4();
-    formData.previousId = uuidv4();
+    // formData.patientId = uuidv4();
+    // formData.expensesId = uuidv4();
+    // formData.requestId = uuidv4();
+    // formData.previousId = uuidv4();
 
     await insertUser(connection, formData);
     await insertPatient(connection, formData);
     await insertMedicalExpenses(connection, formData);
     await insertFundRequest(connection, formData);
     // await insertPreviousFund(connection, formData);
+    await insertWelfareDocsIntoDB(connection, formData);
 
     await connection.commit();
 
@@ -338,11 +354,12 @@ export const updateApprAmt = async (id, amt) => {
 
   try {
 
+    const amount = Number(amt);
     const query = `
       UPDATE fund_request SET approvedAmount = ? WHERE requestId = ?
     `;
 
-    const values = [amt, id];
+    const values = [amount, id];
 
     await connection.execute(query, values);
   } catch (error) {
@@ -501,26 +518,3 @@ export const getUsers = async ({ page = 1, limit = 10, search = '' } = {}) => {
     connection.release();
   }
 };
-
-
-export const updateHRMSNo = async (mobileNo, hrmsNo) => {
-
-  const connection = pool.getConnection();
-
-  try {
-
-    const query = `
-      UPDATE INTO user_profile
-      SET hrmsNo = ?
-      WHERE mobileNo = ?
-    `;
-
-    const values = [hrmsNo, mobileNo];
-    (await connection).execute(query, values);
-  } catch (error) {
-    console.error('Error updating user hrmsno: ', error);
-    throw error;
-  } finally {
-    connection.release();
-  }
-}

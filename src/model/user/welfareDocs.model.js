@@ -5,83 +5,86 @@ import { v4 as uuidv4 } from 'uuid';
 export const createWelfareDocsTable = async () => {
   const query = `
   CREATE TABLE IF NOT EXISTS welfareDocs (
-    docs_id varchar(255) PRIMARY KEY,
+    docsId varchar(255) PRIMARY KEY,
     hrmsNo varchar(255) NOT NULL,
-    discharge_certificate varchar(255),
-    doctor_prescription varchar(255),
-    medicine_bills varchar(255),
-    diagnostic_reports varchar(255),
-    otherDoc1 varchar(255) NULL,
-    otherDoc2 varchar(255) NULL,
-    otherDoc3 varchar(255) NULL,
-    otherDoc4 varchar(255) NULL,
-    otherDoc5 varchar(255) NULL,
+    fundId varchar(255) NOT NULL,
+    dischargeCertificate TEXT,
+    doctorPrescription TEXT,
+    medicineBills TEXT,
+    diagnosticReports TEXT,
+    otherDoc1 TEXT NULL,
+    otherDoc2 TEXT NULL,
+    otherDoc3 TEXT NULL,
+    otherDoc4 TEXT NULL,
+    otherDoc5 TEXT NULL,
     FOREIGN KEY (hrmsNo) REFERENCES wf_users(hrmsNo),
+    FOREIGN KEY (fundId) REFERENCES fund_request(requestId),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   );`;
   await pool.execute(query);
   console.log("✅ welfareDocs table created");
 };
 
-export const insertWelfareDocsIntoDB = async (docs) => {
-  // Destructure with default values of null for optional fields
-  const {
-    hrmsNo,
-    discharge_certificate,
-    doctor_prescription,
-    medicine_bills,
-    diagnostic_reports,
-    otherDoc1,
-    otherDoc2,
-    otherDoc3,
-    otherDoc4,
-    otherDoc5 
-  } = docs || {};
-
+export const insertWelfareDocsIntoDB = async (connection, docs) => {
   const id = uuidv4();
 
+  const safe = (v) => (v === undefined ? null : v);
+
   const query = `
-    INSERT INTO welfareDocs (docs_id, hrmsNo, discharge_certificate, doctor_prescription, medicine_bills, diagnostic_reports,
-        otherDoc1, otherDoc2, otherDoc3, otherDoc4, otherDoc5)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO welfareDocs (
+      docsId, hrmsNo, fundId, dischargeCertificate,
+      doctorPrescription, medicineBills, diagnosticReports,
+      otherDoc1, otherDoc2, otherDoc3, otherDoc4, otherDoc5
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const values = [
     id,
-    hrmsNo,
-    discharge_certificate,
-    doctor_prescription,
-    medicine_bills,
-    diagnostic_reports,
-    otherDoc1,
-    otherDoc2,
-    otherDoc3,
-    otherDoc4,
-    otherDoc5
+    safe(docs.hrmsNo),
+    safe(docs.requestId),
+    safe(docs.dischargeCertificate),
+    safe(docs.doctorPrescription),
+    safe(docs.medicineBills),
+    safe(docs.diagnosticReports),
+    safe(docs.otherDoc1),
+    safe(docs.otherDoc2),
+    safe(docs.otherDoc3),
+    safe(docs.otherDoc4),
+    safe(docs.otherDoc5)
   ];
 
   try {
-    await pool.execute(query, values);
+    await connection.execute(query, values);
     console.log("✅ Welfare documents inserted successfully");
-
   } catch (error) {
     console.error("❌ Error inserting welfare documents:", error);
     throw error;
   }
 };
 
+
 // retrieve welfare documents by id
-export const getWelfareDocsById = async (id) => {
+export const getWelfareDocsById = async (requestId) => {
   const query = `
-    SELECT * FROM welfareDocs WHERE docs_id = ?
+    SELECT *
+    FROM welfareDocs
+    WHERE fundId = ?
   `;
 
   try {
-    const [rows] = await pool.execute(query, [id]);
-    return rows[0];
+    const [rows] = await pool.execute(query, [requestId]);
+    if (!rows.length) return null;
+
+    // remove null values
+    const filtered = Object.fromEntries(
+      Object.entries(rows[0]).filter(([_, value]) => value !== null)
+    );
+
+    return filtered;
+
   } catch (error) {
     console.error("❌ Error retrieving welfare documents:", error);
     throw error;
   }
 };
-

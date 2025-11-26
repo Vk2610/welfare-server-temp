@@ -26,5 +26,4 @@ import { checkConnection } from './src/config/db.config.js';
 
 // Execute the function when this file runs
 createAllTables();
-createWelfareDocsTable();
 checkConnection();
